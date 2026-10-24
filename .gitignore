@@ -4,3 +4,5 @@ results.csv
 .venv/
 __pycache__/
 *.pyc
+.vercel
+.vercel/
