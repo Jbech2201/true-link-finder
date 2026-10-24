@@ -12,6 +12,7 @@ const STATUS_LABEL = {
   ok: "✓ SEHAT",
   zonk: "⚠ ZONK / SEMUA MATI",
   captcha: "🚫 CAPTCHA",
+  timeout: "⏱ WAKTU HABIS",
   error: "✗ ERROR",
   no_link: "○ TANPA LINK",
 };
@@ -26,7 +27,16 @@ async function api(path, payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  return r.json();
+  const text = await r.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return {
+      error:
+        `API ${path} membalas HTTP ${r.status} tanpa JSON ` +
+        `(kemungkinan timeout server). Coba lagi.`,
+    };
+  }
 }
 const probe = (url) => api("/api/probe", { url });
 const checkHealth = (url) => api("/api/check", { url });
@@ -46,8 +56,9 @@ async function resolveOne(url) {
 
     if (p.captcha) {
       return {
-        status: "captcha", host: p.host, url_akhir: current, langkah: steps,
+        status: "captcha", host: p.host, url_akhir: null, langkah: steps,
         alasan: "Indikator '" + p.captcha + "' — tool tidak menyelesaikan CAPTCHA.",
+        pesan: "Buka halaman ini manual di browser, selesaikan verifikasi, lalu tempel URL sesudahnya.",
       };
     }
 
@@ -66,19 +77,25 @@ async function resolveOne(url) {
           return {
             status: "ok", host: hostOf(u), url_akhir: u,
             langkah: steps.concat([u]), alasan: (h.detail || ""),
+            sudah_akhir: u === url,
+            pesan: u === url
+              ? "URL yang kamu masukkan sudah berupa link host file. Tidak ada rantai perantara."
+              : "",
           };
         }
       }
       return {
-        status: "zonk", host: hostOf(current), url_akhir: current, langkah: steps,
+        status: "zonk", host: hostOf(current), url_akhir: null, langkah: steps,
         alasan: "Semua mirror terindikasi ZONK (mati/hapus).",
+        pesan: "Coba matikan cek kesehatan, atau periksa link manual.",
       };
     }
 
     if (!p.next || steps.includes(p.next)) {
       return {
-        status: "no_link", host: p.host, url_akhir: current, langkah: steps,
+        status: "no_link", host: p.host, url_akhir: null, langkah: steps,
         alasan: "Tidak ada link lanjutan (mungkin JS-only/timer).",
+        pesan: "Halaman ini butuh JavaScript/timer. Coba buka manual, atau pakai CLI dengan --browser.",
       };
     }
 
@@ -88,8 +105,9 @@ async function resolveOne(url) {
   }
 
   return {
-    status: "no_link", host: hostOf(current), url_akhir: current, langkah: steps,
+    status: "no_link", host: hostOf(current), url_akhir: null, langkah: steps,
     alasan: "Batas kedalaman (" + MAX_DEPTH + ") tercapai.",
+    pesan: "Rantai terlalu panjang atau berputar. Coba mulai dari URL gate yang lebih dekat.",
   };
 }
 
@@ -132,6 +150,13 @@ function resultCard(url, res) {
   detail.textContent = (res.host ? "Host akhir: " + res.host : "") + (res.alasan ? " · " + res.alasan : "");
   card.appendChild(detail);
 
+  if (res.pesan) {
+    const note = document.createElement("div");
+    note.className = "detail";
+    note.textContent = res.pesan;
+    card.appendChild(note);
+  }
+
   const chain = document.createElement("div");
   chain.className = "chain";
   (res.langkah || []).forEach((s, i) => {
@@ -142,7 +167,7 @@ function resultCard(url, res) {
   });
   card.appendChild(chain);
 
-  if (res.url_akhir && label !== "error") {
+  if (res.url_akhir && label === "ok") {
     const fb = document.createElement("div"); fb.className = "finalbox";
     const input = document.createElement("input"); input.readOnly = true; input.value = res.url_akhir;
     const cp = document.createElement("button"); cp.className = "copy"; cp.textContent = "Copy";

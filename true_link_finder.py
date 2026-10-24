@@ -16,6 +16,8 @@ Usage:
   python3 true_link_finder.py <URL> [options]
 """
 
+from __future__ import annotations
+
 import argparse
 import base64
 import csv
