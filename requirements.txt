@@ -1,0 +1,8 @@
+# Dependensi inti (wajib)
+requests>=2.31
+beautifulsoup4>=4.12
+pyyaml>=6.0
+
+# Opsional — HANYA untuk Fase 3 (mode --browser)
+# playwright>=1.44
+# (lalu jalankan: playwright install chromium)

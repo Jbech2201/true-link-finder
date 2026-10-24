@@ -1,0 +1,149 @@
+# ─────────────────────────────────────────────────────────────
+#  True Link Finder Helper — config.yaml
+#  Semua aturan host & pola ada di sini. Edit tanpa ubah kode.
+#  YAML ini dibaca saat tool start; pastikan indentasi konsisten.
+# ─────────────────────────────────────────────────────────────
+
+# Host TARGET AKHIR (file hosting). Begitu rantai mendarat di salah
+# satu domain ini, tool berhenti dan mencetak link tersebut.
+hosts:
+  file:
+    - { name: google-drive,  domains: [drive.google.com, docs.google.com] }
+    - { name: mega,           domains: [mega.nz, mega.io] }
+    - { name: mediafire,      domains: [mediafire.com] }
+    - { name: pixeldrain,     domains: [pixeldrain.com] }
+    - { name: gofile,         domains: [gofile.io] }
+    - { name: terabox,        domains: [terabox.com, 1024tera.com, motherurl.com, teraboxapp.com] }
+    - { name: dropbox,        domains: [dropbox.com] }
+    - { name: anonfiles,      domains: [anonfiles.com, anonfiles.top] }
+    - { name: bayfiles,       domains: [bayfiles.com] }
+    - { name: ddownload,      domains: [ddownload.com] }
+    - { name: uploadhaven,     domains: [uploadhaven.com] }
+    - { name: racaty,         domains: [racaty.net, racaty.io, racaty.com] }
+    - { name: workupload,     domains: [workupload.com] }
+    - { name: 1fichier,       domains: [1fichier.com] }
+    - { name: katfile,        domains: [katfile.com] }
+    - { name: zippyshare,     domains: [zippyshare.com, zippyshare.mobi] }
+    - { name: krakenfiles,    domains: [krakenfiles.com] }
+    - { name: mixdrop,        domains: [mixdrop.co, mixdrop.ag, mixdrop.ch] }
+    - { name: doodrive,       domains: [doodrive.com] }
+    - { name: rocketfiles,    domains: [rocketfiles.com] }
+    - { name: turbobit,       domains: [turbobit.net] }
+    - { name: hitfile,        domains: [hitfile.net] }
+    - { name: wdupload,       domains: [wdupload.com] }
+    - { name: t.me,           domains: [t.me, telegram.me] }
+
+  # Halaman GATE / perantara (rantai yang harus diikuti).
+  gate:
+    - { name: linkuzu,  domains: [linkuzu.blogspot.com, linkuzu.com] }
+    - { name: neosatsu, domains: [neosatsu.com] }
+    - { name: kolomdownload, domains: [kolomdownload.com] }
+    - { name: ngefilm,  domains: [ngefilm.com] }
+    - { name: movieku,  domains: [movieku.tech, movieku.live] }
+    - { name: anoboy,   domains: [anoboy.fun] }
+    - { name: oploverz, domains: [oploverz.fun] }
+
+# Opsi umum
+options:
+  # Delay antar request (detik). 1–2 dtk seperti disepakati.
+  delay_seconds: 1.5
+  # Batas kedalaman rantai maksimum.
+  max_depth: 10
+  # Timeout HTTP per request (detik).
+  timeout: 20
+  # User-Agent (deterministik, tanpa JS/chrome fingerprint).
+  user_agent: >-
+    Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+    (KHTML, like Gecko) Chrome/124.0 Safari/537.36
+
+  # Keyword yang jadi penanda halaman CAPTCHA / bot-detection.
+  # JIKA TERDETEKSI: berhenti, laporkan, tawarkan mode semi-manual.
+  captcha_markers:
+    - "captcha"
+    - "recaptcha"
+    - "hcaptcha"
+    - "turnstile"
+    - "cf-challenge"
+    - "cf_chl"
+    - "cloudflare challenge"
+    - "are you a human"
+    - "verify you are human"
+    - "browser check"
+
+  # Penanda halaman landing host yang menandakan file ZONK (mati/hapus/
+  # kedaluwarsa). Dipakai saat cek kesehatan link tujuan (--check default ON).
+  health_bad_markers:
+    - "file not found"
+    - "file tidak ditemukan"
+    - "this file was deleted"
+    - "this file has been deleted"
+    - "file was removed"
+    - "the file was removed"
+    - "deleted by uploader"
+    - "removed by uploader"
+    - "file has expired"
+    - "link has expired"
+    - "link expired"
+    - "expired"
+    - "invalid link"
+    - "invalid file"
+    - "no longer available"
+    - "not available anymore"
+    - "taken down"
+    - "file does not exist"
+    - "file yang anda cari"
+    - "file yang kamu cari"
+    - "berkas sudah dihapus"
+    - "file sudah dihapus"
+
+  # Keyword yang biasanya menandai elemen iklan/tracker → DIABAIKAN
+  # saat memilih link lanjutan (jangan diklik / dipakai).
+  ignore_keywords:
+    - "banner"
+    - "advert"
+    - "ad-"    
+    - "ads"
+    - "sponsor"
+    - "tracker"
+    - "analytics"
+    - "popup"
+    - "pop-up"
+    - "overlay"
+    - "share"
+    - "telegram"
+    - "whatsapp"
+    - "facebook"
+    - "twitter"
+    - "subscribe"
+    - "cookie"
+    - "privacy"
+    - "disqus"
+    - "doubleclick"
+    - "googlesyndication"
+    - "amazon-adsystem"
+
+# Konfigurasi backend browser (Fase 3, OPSIONAL). Hanya dipakai
+# bila tombol --browser diberikan dan playwright terpasang.
+browser:
+  enabled: false
+  headful: false
+  # Tunggu maksimum (detik) untuk link muncul setelah JS/timer.
+  wait_after_load: 10
+  # Daftar domain iklan/tracker yang request-nya diblokir.
+  blocked_ad_domains:
+    - "doubleclick.net"
+    - "googlesyndication.com"
+    - "googleadservices.com"
+    - "amazon-adsystem.com"
+    - "taboola.com"
+    - "outbrain.com"
+    - "adservice.google.com"
+  # Label tombol lanjut yang SAH untuk diklik (bukan iklan).
+  continue_button_labels:
+    - "get link"
+    - "continue"
+    - "lanjut"
+    - "download"
+    - "next"
+    - "go to download"
+    - "buat link"

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>True Link Finder — Web</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🔗 True Link Finder</h1>
+    <p class="tagline">Ikuti rantai halaman download → link host akhir yang SEHAT (anti-zonk)</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <textarea id="urls" rows="4" placeholder="Tempel 1+ URL (satu per baris).&#10;Contoh:&#10;https://www.neosatsu.com/2026/08/kamen-rider-my-th-sub-indo.html"></textarea>
+      <div class="controls">
+        <label class="chk"><input type="checkbox" id="check" checked> Cek kesehatan (anti-zonk)</label>
+        <button id="run" class="primary">Resolve</button>
+      </div>
+      <p class="hint">Mode web gratis: timeout ±10 dtk & beberapa situs memblokir IP server → kalau gagal, jalankan versi CLI lokal.</p>
+    </section>
+
+    <section id="results" class="results"></section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

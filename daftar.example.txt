@@ -1,0 +1,5 @@
+# Daftar URL untuk mode batch (satu per baris, baris # diabaikan)
+# Contoh:
+https://neosatsu.com/episode-1
+https://neosatsu.com/episode-2
+https://neosatsu.com/episode-3

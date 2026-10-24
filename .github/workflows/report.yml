@@ -1,0 +1,49 @@
+name: Generate Report → GitHub Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls_file:
+        description: 'File teks berisi URL di repo (satu per baris)'
+        required: true
+        default: 'daftar.txt'
+      max_depth:
+        description: 'Kedalaman rantai maksimum'
+        required: false
+        default: '6'
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pasang dependensi
+        run: pip install -r requirements.txt
+
+      - name: Batch resolve (rantai → results.csv)
+        run: python3 true_link_finder.py --batch "${{ inputs.urls_file }}" --out results.csv --max-depth ${{ inputs.max_depth }}
+
+      - name: Generate HTML report
+        run: python3 tools/make_report.py --input results.csv --output report/index.html
+
+      - name: Siapkan artifact hasil
+        uses: actions/upload-artifact@v4
+        with:
+          name: true-link-finder-results
+          path: |
+            results.csv
+            report/index.html
+
+      - name: Deploy ke GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./report

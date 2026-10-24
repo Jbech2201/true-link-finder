@@ -1,0 +1,12 @@
+# Hal yang TIDAK ikut ter-deploy ke Vercel (biar fungsi tetap ringan)
+debug/
+debug_lz/
+tests/
+report/
+tools/
+*.md
+.git/
+.github/
+.venv/
+__pycache__/
+*.pyc
