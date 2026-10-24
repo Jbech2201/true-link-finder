@@ -4,6 +4,9 @@ CLI Python deterministik untuk mengikuti **rantai halaman download perantara** �
 misalnya `neosatsu.com` → `linkuzu.blogspot.com/?i=...` → host file akhir
 (Google Drive, Mega, Mediafire, Pixeldrain, GoFile, Terabox, dll).
 
+> 📄 **Laporan proyek lengkap** (diagram deployment, komponen, alur kerja):
+> lihat **`docs/LAPORAN.md`**.
+
 Tool **hanya resolve link** dan mencetak hasil. Ia **tidak** mengunduh file,
 tidak memakai AI/LLM, tidak memakai API berbayar/key, dan **tidak pernah**
 menyelesaikan atau menembus CAPTCHA.
