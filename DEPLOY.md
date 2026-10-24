@@ -32,7 +32,8 @@ Vercel otomatis mendeteksi `vercel.json`:
 Setelah deploy, buka URL production. Frontend di `public/index.html` akan
 memanggil `/api/resolve`.
 
-> Batasan free tier: timeout ±10 dtk → `max_depth` default 6, delay kecil.
+> Batasan web: `maxDuration` 60 dtk, batas internal 45 dtk, timeout per-request
+> 6 dtk. `max_depth` default 6 (maks 8), delay 0.15 dtk.
 > Sebagian situs memblokir IP datacenter → kalau gagal, pakai CLI lokal.
 
 ### Test cepat API setelah deploy

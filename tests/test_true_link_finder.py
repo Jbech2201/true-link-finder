@@ -258,6 +258,31 @@ class TestSolverOffline(unittest.TestCase):
         self.assertEqual(res["status"], "zonk")
         self.assertIn("ZONK", res["alasan"])
 
+    def test_url_akhir_none_saat_gagal(self):
+        # Jangan pernah mengembalikan URL input sebagai "link akhir" saat gagal.
+        html = "<html><body><h1>kosong</h1></body></html>"
+        solver = Solver(self.cfg, FakeFetcher({"https://gate.example/": html}),
+                        max_depth=5, delay=0)
+        res = solver.resolve("https://gate.example/")
+        self.assertEqual(res["status"], "no_link")
+        self.assertIsNone(res["url_akhir"])
+        self.assertTrue(res["pesan"])
+
+    def test_link_file_langsung_ditandai_sudah_akhir(self):
+        url = "https://gofile.io/d/CwxOktYI"
+        mapping = {url: ("<html><body>file</body></html>", 200)}
+        solver = Solver(self.cfg, FakeFetcher(mapping), max_depth=3, delay=0)
+        res = solver.resolve(url)
+        self.assertEqual(res["status"], "ok")
+        self.assertTrue(res["sudah_akhir"])
+        self.assertEqual(res["url_akhir"], url)
+
+    def test_deadline_berhenti_dengan_status_timeout(self):
+        solver = Solver(self.cfg, FakeFetcher({}), max_depth=5, delay=0, deadline=-1)
+        res = solver.resolve("https://gate.example/")
+        self.assertEqual(res["status"], "timeout")
+        self.assertIsNone(res["url_akhir"])
+
 
 if __name__ == "__main__":
     unittest.main()

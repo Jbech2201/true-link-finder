@@ -10,6 +10,7 @@ const STATUS_LABEL = {
   ok: "✓ SEHAT",
   zonk: "⚠ ZONK / SEMUA MATI",
   captcha: "🚫 CAPTCHA",
+  timeout: "⏱ WAKTU HABIS",
   error: "✗ ERROR",
   no_link: "○ TANPA LINK",
 };
@@ -71,6 +72,13 @@ function resultCard(url, res) {
     (res.alasan ? " · " + res.alasan : "");
   card.appendChild(detail);
 
+  if (res.pesan) {
+    const note = document.createElement("div");
+    note.className = "detail";
+    note.textContent = res.pesan;
+    card.appendChild(note);
+  }
+
   const chain = document.createElement("div");
   chain.className = "chain";
   (res.langkah || []).forEach((s, i) => {
@@ -81,7 +89,7 @@ function resultCard(url, res) {
   });
   card.appendChild(chain);
 
-  if (res.url_akhir && label !== "error") {
+  if (res.url_akhir && label === "ok") {
     const fb = document.createElement("div");
     fb.className = "finalbox";
     const input = document.createElement("input");
@@ -109,7 +117,16 @@ async function resolveOne(url) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url, check: chk.checked }),
   });
-  return r.json();
+  const text = await r.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return {
+      error:
+        `API membalas HTTP ${r.status} tanpa JSON ` +
+        `(kemungkinan timeout server). Coba lagi atau kurangi kedalaman.`,
+    };
+  }
 }
 
 async function run() {

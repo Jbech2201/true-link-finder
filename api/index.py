@@ -27,7 +27,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "config.yaml")
 
 WEB_MAX_DEPTH = 6
-WEB_DELAY = 0.25
+WEB_MIN_DELAY = 0.15
+WEB_TIMEOUT = 6      # per-request; situs lambat jangan sampai makan seluruh budget
+WEB_DEADLINE = 45    # total; di bawah maxDuration 60 di vercel.json
 
 HEADERS = [
     ("Content-Type", "application/json; charset=utf-8"),
@@ -79,18 +81,27 @@ def app(environ, start_response):
         return _balas(start_response, {"error": "URL tidak valid (harus http(s)://)."}, 400)
 
     max_depth = int(body.get("max_depth") or WEB_MAX_DEPTH)
-    delay = float(body.get("delay") or WEB_DELAY)
+    delay = float(body.get("delay") or WEB_MIN_DELAY)
     # jaga-jaga agar tetap dalam budget timeout
-    max_depth = min(max_depth, 10)
+    max_depth = min(max_depth, 8)
     delay = max(delay, 0)
+
+    # checkbox "cek kesehatan" di frontend dulu diabaikan; sekarang dihormati
+    check = body.get("check", True)
+    if isinstance(check, str):
+        check = check.strip().lower() not in ("0", "false", "no", "off")
 
     try:
         cfg = Config.load(CONFIG)
     except Exception as e:
         return _balas(start_response, {"error": f"Gagal memuat config: {e}"}, 500)
 
+    # mode web: request jangan menggantung terlalu lama
+    cfg.data.setdefault("options", {})["timeout"] = WEB_TIMEOUT
+
     fetcher = StaticFetcher(cfg, delay=0, verbose=False)
-    solver = Solver(cfg, fetcher, max_depth=max_depth, delay=delay, check=True)
+    solver = Solver(cfg, fetcher, max_depth=max_depth, delay=delay,
+                    check=bool(check), deadline=WEB_DEADLINE)
 
     try:
         hasil = solver.resolve(url)

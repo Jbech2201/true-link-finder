@@ -445,7 +445,8 @@ class LandingHealthChecker:
 class Solver:
     def __init__(self, cfg: Config, fetcher, verbose: bool = False,
                  save_dir: Optional[str] = None, max_depth: Optional[int] = None,
-                 delay: Optional[float] = None, check: bool = True):
+                 delay: Optional[float] = None, check: bool = True,
+                 deadline: Optional[float] = None):
         self.cfg = cfg
         self.fetcher = fetcher
         self.verbose = verbose
@@ -455,6 +456,9 @@ class Solver:
         # cek kesehatan link tujuan (anti-zonk), bisa dimatikan dgn --no-check
         self.check = check
         self.checker = LandingHealthChecker(cfg, fetcher) if check else None
+        # batas waktu total (detik). Dipakai mode web supaya tidak kena
+        # hard-timeout serverless yang menghasilkan respons kosong.
+        self.deadline = deadline
 
     def _score(self, url: str) -> int:
         cls = self.cfg.classify(host_of(url))
@@ -509,8 +513,15 @@ class Solver:
         current = start_url
         status = "no_link"
         reason = "Tidak ditemukan link lanjutan di akhir rantai."
+        started = time.time()
 
         for depth in range(1, self.max_depth + 1):
+            if self.deadline and (time.time() - started) > self.deadline:
+                status = "timeout"
+                reason = ("Batas waktu habis sebelum rantai selesai. "
+                          "Coba lagi, kurangi kedalaman, atau pakai CLI lokal.")
+                break
+
             log(f"Langkah {depth}: {current}", self.verbose, "info")
 
             # Pre-resolve: kalau URL gate punya parameter ?i= yang ter-decode
@@ -540,10 +551,12 @@ class Solver:
             if cap:
                 return {
                     "url_awal": start_url,
-                    "url_akhir": current,
+                    "url_akhir": None,
                     "host": page.effective_domain,
                     "status": "captcha",
                     "alasan": f"Terdeteksi indikator '{cap}'. Tool berhenti dan TIDAK menyelesaikan CAPTCHA.",
+                    "pesan": ("Halaman ini minta verifikasi manusia. Buka manual di browser, "
+                              "selesaikan, lalu tempel URL sesudahnya. Tool tidak menembus CAPTCHA."),
                     "langkah": steps + [current],
                 }
 
@@ -596,12 +609,24 @@ class Solver:
 
         return {
             "url_awal": start_url,
-            "url_akhir": current,
+            "url_akhir": None,
             "host": host_of(current),
             "status": status,
             "alasan": reason,
+            "pesan": self._pesan_gagal(status, current),
             "langkah": steps,
         }
+
+    @staticmethod
+    def _pesan_gagal(status: str, current: str) -> str:
+        if status == "timeout":
+            return "Rantai belum selesai saat waktu habis. Coba lagi atau pakai CLI lokal."
+        if status == "zonk":
+            return "Link tujuan terindikasi mati. Tool tidak memaksakan link yang tidak sehat."
+        if status == "captcha":
+            return "Butuh interaksi manual di browser."
+        return ("Tidak ada link lanjutan yang bisa diikuti dari "
+                f"{host_of(current)}. Kemungkinan halaman butuh JavaScript/timer.")
 
     def _select_healthy_file(self, start_url: str, steps: list, current: str,
                              cands: List[str]) -> Dict:
@@ -627,20 +652,26 @@ class Solver:
         log(reason, True, "warn")
         return {
             "url_awal": start_url,
-            "url_akhir": current,
+            "url_akhir": None,
             "host": self._host_name(host_of(current)),
             "status": "zonk",
             "alasan": reason,
+            "pesan": ("Semua kandidat link tujuan terindikasi mati/dihapus. "
+                      "Coba matikan cek kesehatan atau periksa manual."),
             "langkah": steps + [current],
         }
 
     def _ok_res(self, start_url: str, steps: list, current: str, final_url: str) -> Dict:
+        sama = final_url.rstrip("/") == start_url.rstrip("/")
         return {
             "url_awal": start_url,
             "url_akhir": final_url,
             "host": self._host_name(host_of(final_url)),
             "status": "ok",
             "alasan": "",
+            "sudah_akhir": sama,
+            "pesan": ("URL yang kamu masukkan sudah berupa link host file. "
+                      "Tidak ada rantai perantara yang perlu diurai.") if sama else "",
             "langkah": steps + [final_url],
         }
 
@@ -752,9 +783,13 @@ def print_chain(res: dict, verbose: bool) -> None:
         print("-" * 60)
         print(f"  HOST AKHIR : {res['host']}")
         print(f"  LINK AKHIR : {res['url_akhir']}")
+        if res.get("pesan"):
+            print(f"  CATATAN    : {res['pesan']}")
     else:
         print("-" * 60)
         print(f"  ALASAN     : {res['alasan']}")
+        if res.get("pesan"):
+            print(f"  SARAN      : {res['pesan']}")
         if res["status"] == "zonk":
             print("\n  Semua mirror terindikasi ZONK (mati/rusak). Coba:")
             print("    • jalankan ulang nanti (link host bisa pulih/hidup lagi),")

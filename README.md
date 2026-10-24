@@ -150,9 +150,23 @@ Tool inti tetap CLI lokal. Tapi ada dua lapisan UI tambahan yang gratis:
 - `api/index.py` = serverless function Python (`POST /api/resolve`).
 - `public/` = frontend (input URL, daftar hasil, badge status, tombol copy).
 - Deploy: import repo ini ke Vercel (file `vercel.json` sudah disiapkan).
-- Batasan free tier: timeout ±10 dtk → `max_depth` dibatasi (default 6) dan delay
-  dikecilkan. Sebagian situs memblokir IP datacenter → bisa gagal padahal jalan
-  lokal; kalau begitu, pakai CLI lokal.
+- Batasan web: `maxDuration` 60 dtk, dengan batas internal 45 dtk dan timeout
+  per-request 6 dtk — kalau rantai belum selesai, API berhenti dengan status
+  `timeout` (bukan respons kosong). `max_depth` dibatasi 8 dan delay dikecilkan.
+  Sebagian situs memblokir IP datacenter → bisa gagal padahal jalan lokal;
+  kalau begitu, pakai CLI lokal.
+
+### Kontrak respons API
+
+```json
+{"url_awal": "...", "url_akhir": "...", "host": "gofile", "status": "ok",
+ "sudah_akhir": false, "pesan": "", "langkah": ["..."]}
+```
+
+- `url_akhir` **hanya** berisi link kalau `status == "ok"`. Kalau gagal nilainya
+  `null`, supaya URL input tidak dipantulkan balik seolah-olah itu hasil.
+- `sudah_akhir: true` → URL yang kamu masukkan memang sudah link host file.
+- Status: `ok`, `no_link`, `zonk`, `captcha`, `timeout`, `error`.
 
 **2. Report HTML statis untuk GitHub Pages**
 ```bash

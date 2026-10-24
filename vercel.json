@@ -5,7 +5,7 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python",
-      "config": { "maxDuration": 10 }
+      "config": { "maxDuration": 60 }
     },
     {
       "src": "public/**",

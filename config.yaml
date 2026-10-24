@@ -72,6 +72,9 @@ options:
 
   # Penanda halaman landing host yang menandakan file ZONK (mati/hapus/
   # kedaluwarsa). Dipakai saat cek kesehatan link tujuan (--check default ON).
+  # Sengaja TIDAK memakai kata tunggal generik seperti "expired", "taken down",
+  # atau "invalid link": kata-kata itu sering nongol di template/JS halaman
+  # yang sebenarnya sehat, dan bikin hasil palsu "ZONK".
   health_bad_markers:
     - "file not found"
     - "file tidak ditemukan"
@@ -84,12 +87,6 @@ options:
     - "file has expired"
     - "link has expired"
     - "link expired"
-    - "expired"
-    - "invalid link"
-    - "invalid file"
-    - "no longer available"
-    - "not available anymore"
-    - "taken down"
     - "file does not exist"
     - "file yang anda cari"
     - "file yang kamu cari"
