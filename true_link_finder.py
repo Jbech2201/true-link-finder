@@ -190,6 +190,31 @@ def decode_obfuscated_host_id(id_str: str) -> Optional[str]:
     return None
 
 
+def decode_gate_param(cfg: Config, url: str) -> Optional[str]:
+    """
+    Decode parameter gate ?i=<base64> dari URL menjadi URL host file (jika ada).
+    Dipakai solver & API (hybrid) supaya konsisten.
+    """
+    try:
+        qp = urllib.parse.urlparse(url)
+        params = urllib.parse.parse_qs(qp.query)
+    except Exception:
+        return None
+    i = params.get("i") or params.get("i2")
+    if not i:
+        return None
+    val = i[0].strip()
+    for cand in decode_layered(val):
+        if cfg.classify(host_of(cand)) == "file":
+            return cand
+    d = b64_try(val)
+    if d:
+        u = decode_obfuscated_host_id(d)
+        if u and cfg.classify(host_of(u)) == "file":
+            return u
+    return None
+
+
 
 # ─────────────────────────────────────────────────────────────
 # Config
@@ -481,26 +506,7 @@ class Solver:
         query '?i=<base64>'. Decode DARI URL saja (tanpa fetch) supaya tidak
         nyasar ke rantai safelink/iklan, dan real deterministik.
         """
-        try:
-            qp = urllib.parse.urlparse(url)
-            params = urllib.parse.parse_qs(qp.query)
-        except Exception:
-            return None
-        i = params.get("i") or params.get("i2")
-        if not i:
-            return None
-        val = i[0].strip()
-        # Lapisan 1: decode berlapis langsung (bisa menghasilkan URL host)
-        for cand in decode_layered(val):
-            if self.cfg.classify(host_of(cand)) == "file":
-                return cand
-        # Lapisan 2: base64 → id obfuskasi → URL host
-        d = b64_try(val)
-        if d:
-            u = decode_obfuscated_host_id(d)
-            if u and self.cfg.classify(host_of(u)) == "file":
-                return u
-        return None
+        return decode_gate_param(self.cfg, url)
 
     def resolve(self, start_url: str) -> Dict:
         """
@@ -875,7 +881,10 @@ def run_batch(args, cfg) -> int:
     print(f"\nSelesai. Hasil tersimpan di {args.out}")
     ok = sum(1 for r in rows if r[3] == "ok")
     print(f"Ringkasan: {ok}/{len(rows)} berhasil, {len(rows)-ok} gagal.")
-    return EXIT_OK if ok == len(rows) else EXIT_URL_RESOLVED
+    # Batch tetap dianggap sukses selama CSV berhasil ditulis: kegagalan per-URL
+    # adalah DATA yang mau dilaporkan, bukan error tool. Kalau exit != 0,
+    # workflow report ikut mati dan tidak pernah sempat deploy.
+    return EXIT_OK
 
 
 def main(argv: Optional[List[str]] = None) -> int:

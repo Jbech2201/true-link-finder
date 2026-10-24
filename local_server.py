@@ -22,6 +22,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
 from true_link_finder import Config, Solver, StaticFetcher, looks_like_url  # noqa: E402
+from true_link_finder import decode_gate_param, detect_captcha, extract_candidates, host_of, LandingHealthChecker  # noqa: E402
 
 CONFIG = os.path.join(ROOT, "config.yaml")
 PUBLIC = os.path.join(ROOT, "public")
@@ -36,6 +37,52 @@ def resolve_one(url: str) -> dict:
     solver = Solver(cfg, fetcher, max_depth=LOCAL_MAX_DEPTH,
                     delay=LOCAL_DELAY, check=True)
     return solver.resolve(url)
+
+
+def probe_page_local(cfg, url: str) -> dict:
+    # Short-circuit: ?i= ter-decode → langsung balikin host file tanpa fetch
+    direct = decode_gate_param(cfg, url)
+    if direct:
+        return {
+            "url": url,
+            "final_url": url,
+            "cls": "gate",
+            "host": host_of(url),
+            "captcha": None,
+            "direct": direct,
+            "files": [],
+            "next": None,
+        }
+
+    fetcher = StaticFetcher(cfg, delay=0, verbose=False)
+    page = fetcher.fetch(url)
+    cls = cfg.classify(page.effective_domain)
+    cap = detect_captcha(page.html, cfg)
+    cands = extract_candidates(page.html, page.final_url, cfg)
+    files, gates, others = [], [], []
+    seen = set()
+    for u in cands:
+        if u in seen:
+            continue
+        seen.add(u)
+        k = cfg.classify(host_of(u))
+        if k == "file":
+            files.append(u)
+        elif k == "gate":
+            gates.append(u)
+        else:
+            others.append(u)
+    nxt = next(iter(gates + others), None)
+    return {
+        "url": url,
+        "final_url": page.final_url,
+        "cls": cls,
+        "host": page.effective_domain,
+        "captcha": cap,
+        "direct": decode_gate_param(cfg, url),
+        "files": files,
+        "next": nxt,
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -75,9 +122,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, f.read(), ctype)
 
     def do_POST(self):
-        if self.path.split("?")[0] != "/api/resolve":
-            self._json({"error": "Endpoint tidak dikenal"}, 404)
-            return
+        path = self.path.split("?")[0]
         try:
             length = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
@@ -93,10 +138,21 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "URL tidak valid (harus http(s)://)."}, 400)
             return
 
+        cfg = Config.load(CONFIG)
         try:
-            res = resolve_one(url)
+            if path == "/api/probe":
+                res = probe_page_local(cfg, url)
+            elif path == "/api/check":
+                fetcher = StaticFetcher(cfg, delay=0, verbose=False)
+                st, detail = LandingHealthChecker(cfg, fetcher).check(url)
+                res = {"url": url, "status": st, "detail": detail}
+            elif path == "/api/resolve":
+                res = resolve_one(url)
+            else:
+                self._json({"error": "Endpoint tidak dikenal"}, 404)
+                return
         except Exception as e:  # noqa: BLE001
-            self._json({"error": f"Gagal resolve: {e}"}, 500)
+            self._json({"error": f"Gagal: {e}"}, 500)
             return
         self._json(res, 200)
 
