@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Laporan Proyek — True Link Finder Helper</title>
+<style>
+  body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.5; margin: 24px; }
+  h1 { font-size: 20pt; color: #0b5cad; }
+  h2 { font-size: 15pt; color: #0b5cad; border-bottom: 2px solid #0b5cad; padding-bottom: 3px; margin-top: 22px; }
+  h3 { font-size: 12.5pt; color: #123; }
+  table.plain { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  table.plain th, table.plain td { border: 1px solid #999; padding: 6px 8px; vertical-align: top; font-size: 10pt; }
+  table.plain th { background-color: #e8f0fb; }
+  .badge { padding: 1px 8px; border-radius: 8px; font-weight: bold; color: #fff; }
+  .ok { background-color: #2e7d32; }
+  .zonk { background-color: #e6a817; }
+  .bad { background-color: #c62828; }
+  .box { border: 1px solid #0b5cad; background: #f4f8ff; padding: 8px 10px; margin: 6px 0; }
+  code { font-family: 'DejaVu Sans Mono', monospace; font-size: 9.5pt; background: #f0f0f0; }
+  .muted { color: #666; font-size: 9.5pt; }
+  ul { margin: 6px 0 6px 18px; }
+  .diagram { border: 1px solid #888; padding: 10px; background: #fafafa; margin: 8px 0; }
+  .diagram .node { border: 1px solid #0b5cad; background: #e8f0fb; padding: 6px; margin: 4px; text-align: center; font-weight: bold; }
+  .arrow { text-align: center; color: #0b5cad; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>Laporan Proyek — True Link Finder Helper</h1>
+<p class="muted">Versi 1.0.0 · 24 Oktober 2026 · Status: implementasi selesai, teruji (29 unit test offline), demo live berhasil.</p>
+
+<h2>1. Ringkasan Eksekutif</h2>
+<p>True Link Finder Helper mengikuti <b>rantai halaman download perantara</b>
+(contoh: <code>neosatsu.com</code> → <code>linkuzu.blogspot.com/?i=...</code> → host file akhir)
+sampai menemukan link tujuan akhir yang siap download dan tidak zonk.</p>
+<ul>
+  <li><b>Deterministik</b> — tanpa AI/LLM, tanpa API berbayar, tanpa key.</li>
+  <li><b>Murni Python</b> — <code>requests</code> + <code>beautifulsoup4</code> + <code>pyyaml</code>.</li>
+  <li><b>Anti-zonk</b> — cek kesehatan halaman landing; auto-fallback antar mirror.</li>
+  <li><b>Aman/etis</b> — tidak menyelesaikan CAPTCHA, tidak login, tidak auto-download.</li>
+  <li><b>Multi-sajian</b> — CLI lokal, web live (Vercel, hybrid anti-timeout), report statis (GitHub Pages).</li>
+</ul>
+
+<h2>2. Tujuan &amp; Masalah yang Diselesaikan</h2>
+<table class="plain">
+  <tr><th>Masalah</th><th>Solusi</th></tr>
+  <tr><td>Rantai download berlapis &amp; berubah-ubah</td><td>Parser statis + decoder base64/<code>czo</code>/<code>?i=</code> lewat <code>config.yaml</code></td></tr>
+  <tr><td>Link akhir zonk (mati/hapus/kedaluwarsa)</td><td><code>LandingHealthChecker</code> + auto-fallback antar mirror</td></tr>
+  <tr><td>Halaman link-nya muncul setelah JS/timer</td><td>Backend Playwright opsional (<code>--browser</code>, <code>--headful</code>)</td></tr>
+  <tr><td>Mode web online sering timeout</td><td>Arsitektur hybrid: server kerja per-halaman, orkestrasi di browser</td></tr>
+  <tr><td>Banyak URL (satu musim)</td><td>Mode batch → <code>results.csv</code> → HTML report statis</td></tr>
+</table>
+
+<h2>3. Arsitektur Komponen</h2>
+<div class="diagram">
+  <div class="node">Inti Python — true_link_finder.py</div>
+  <p>+ CLI (argparse) · Solver · StaticFetcher · LandingHealthChecker · Ekstraktor Kandidat · Decoder base64/czo/?i= · BrowserFetcher opsional</p>
+  <div class="arrow">▲</div>
+  <div class="node">Lapisan Web (opsional) — public/ + api/index.py (probe / check / resolve)</div>
+  <div class="arrow">▲</div>
+  <div class="node">Lapisan Laporan — results.csv → tools/make_report.py → report/index.html</div>
+  <div class="arrow">▲</div>
+  <div class="node">CI / Deploy — GitHub Actions (report.yml) → GitHub Pages</div>
+</div>
+<table class="plain">
+  <tr><th>Komponen</th><th>Tanggung jawab</th></tr>
+  <tr><td><code>Solver</code></td><td>Loop utama: fetch → klasifikasi host → ekstraksi → pilih hop → anti-zonk</td></tr>
+  <tr><td><code>StaticFetcher</code></td><td>Fetch HTTP statis (session reuse, User-Agent, timeout)</td></tr>
+  <tr><td><code>LandingHealthChecker</code></td><td>Cek kesehatan halaman landing host (status HTTP + penanda zonk)</td></tr>
+  <tr><td><code>extract_candidates</code></td><td>Kumpulkan semua kandidat link dari HTML</td></tr>
+  <tr><td><code>decode_obfuscated_host_id</code></td><td>Dekode pola <code>czo</code> (<code>XXXczoXXXv&lt;base64 path&gt;</code>)</td></tr>
+  <tr><td><code>decode_gate_param</code></td><td>Dekode <code>?i=&lt;base64&gt;</code> dari URL gate (short-circuit)</td></tr>
+  <tr><td><code>BrowserFetcher</code></td><td>(Opsional) jalankan JS/timer/klik via Playwright</td></tr>
+</table>
+
+<h2>4. Diagram Deployment</h2>
+<div class="diagram">
+  <div class="node">Lingkungan Lokal</div>
+  <p>CLI (true_link_finder.py) · Local Server (local_server.py @ localhost:8080)</p>
+  <div class="arrow">▲</div>
+  <div class="node">Vercel (free tier)</div>
+  <p>Function: api/index.py (probe/check/resolve) · Static: public/</p>
+  <div class="arrow">▲</div>
+  <div class="node">GitHub</div>
+  <p>Repositori → Actions (report.yml) → GitHub Pages (report/)</p>
+</div>
+<p class="muted">CLI &amp; API mengakses Internet (situs gate/host). Report statis di-publish ke GitHub Pages tanpa server.</p>
+
+<h2>5. Alur Kerja</h2>
+<h3>5.1 Alur resolver (CLI / API resolve)</h3>
+<div class="diagram">
+  <p>&nbsp; <b>Mulai: URL awal</b> → Pre-resolve <code>?i=</code> → direct ke host file?</p>
+  <p>&nbsp;&nbsp;&nbsp; ya → <b>Anti-zonk</b> cek landing → sehat? → cetak link akhir ✓</p>
+  <p>&nbsp;&nbsp;&nbsp; tidak → <b>Fetch halaman</b> → ada <b>CAPTCHA</b>? → ya: berhenti + semi-manual</p>
+  <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <b>Klasifikasi host</b> → <span class="badge ok">file</span> → anti-zonk</p>
+  <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <span class="badge ok">gate</span> → <b>Ekstrak kandidat</b> → pilih hop → gate: lanjut fetch / file: anti-zonk</p>
+  <p>&nbsp;&nbsp;&nbsp; Anti-zonk: mirror buruk → coba mirror berikutnya; habis → <span class="badge zonk">status ZONK</span></p>
+</div>
+<h3>5.2 Alur web hybrid (anti-timeout)</h3>
+<div class="diagram">
+  <p>1. Browser → <code>POST /api/probe</code> {url}: short-circuit <code>?i=</code> jika ada; jika tidak, fetch 1 halaman → <code>{cls, files[], next, captcha}</code></p>
+  <p>2. Browser → <code>POST /api/check</code> {mirror}: fetch landing host → <code>{status: ok/bad}</code></p>
+  <p>3. Browser memilih mirror sehat, lanjut hop (delay di klien). Server tak pernah kerja lama (<3 dtk/request).</p>
+</div>
+
+<h2>6. Data &amp; Konfigurasi</h2>
+<p><code>config.yaml</code> (editable tanpa ubah kode):</p>
+<table class="plain">
+  <tr><th>Bagian</th><th>Isi</th></tr>
+  <tr><td><code>hosts.file</code></td><td>24 host (Google Drive, Mega, Mediafire, Pixeldrain, GoFile, Terabox, Dropbox, dll) → tujuan akhir</td></tr>
+  <tr><td><code>hosts.gate</code></td><td>7 gate (linkuzu, neosatsu, kolomdownload, ngefilm, movieku, anoboy, oploverz) → rantai perantara</td></tr>
+  <tr><td><code>options.captcha_markers</code></td><td>10 penanda (turnstile, hCaptcha, reCAPTCHA, Cloudflare, dll)</td></tr>
+  <tr><td><code>options.health_bad_markers</code></td><td>16 penanda zonk (file not found, deleted, expired, dll)</td></tr>
+</table>
+<p><b>Hasil batch — <code>results.csv</code>:</b> <code>url_awal, url_akhir, host, status, alasan</code>.
+Status: <code>ok</code> / <code>zonk</code> / <code>captcha</code> / <code>no_link</code> / <code>error</code>.</p>
+
+<h2>7. Keamanan &amp; Etika</h2>
+<ul>
+  <li>Tanpa AI/token; seluruh logika adalah kode deterministik.</li>
+  <li>Tanpa menembus CAPTCHA — jika terdeteksi, berhenti + tawarkan semi-manual.</li>
+  <li>Tanpa kredensial/login.;li>
+  <li>Tanpa auto-download — hanya resolve &amp; mencetak link.</li>
+  <li>Polite scraping — delay 1–2 detik antar request, <code>max-depth</code> dibatasi.</li>
+</ul>
+
+<h2>8. Pengujian</h2>
+<table class="plain">
+  <tr><th>Jenis</th><th>Hasil</th></tr>
+  <tr><td>Unit test offline (fixture HTML)</td><td>29 lulus</td></tr>
+  <tr><td>Uji live neosatsu</td><td><code>ok</code> → gofile <code>https://gofile.io/d/CwxOktYI</code></td></tr>
+  <tr><td>Uji live linkuzu</td><td><code>ok</code> → gofile <code>https://gofile.io/d/7KSBhnrp</code> (short-circuit, 0.02 dtk)</td></tr>
+</table>
+
+<h2>9. Batasan</h2>
+<ul>
+  <li>Cek kesehatan berbasis halaman landing, bukan verifikasi byte penuh.</li>
+  <li>Parser statis bergantung pola situs; jika berubah perlu pembaruan.</li>
+  <li>Beberapa situs memblokir IP datacenter → mode web bisa gagal meski jalan lokal.</li>
+  <li>CAPTCHA tidak pernah diselesaikan otomatis.</li>
+</ul>
+
+<h2>10. Berkas Proyek</h2>
+<pre>true-link-finder/
+├── true_link_finder.py    # CLI inti (solver, decoder, anti-zonk)
+├── config.yaml             # aturan host &am pola
+├── local_server.py         # server lokal (stdlib)
+├── requirements.txt
+├── vercel.json             # konfigurasi deploy Vercel
+├── api/index.py            # serverless function (probe / check / resolve)
+├── public/                 # frontend web
+├── tools/make_report.py    # generator report HTML statis
+├── .github/workflows/report.yml
+├── tests/
+├── README.md
+└── DEPLOY.md</pre>
+
+<h2>11. Roadmap / Lanjutan</h2>
+<ul>
+  <li>Caching hasil resolve (KV) agar repeat live instan.</li>
+  <li>Preferensi kualitas (1080p dulu) saat memilih mirror.</li>
+  <li>Flag <code>--all</code> untuk mencetak semua mirror sehat.</li>
+  <li>GitHub Action dengan notifikasi &amp; jadwal.</li>
+  <li>(Opsional) pengujian Playwright untuk situs JS-only.</li>
+</ul>
+
+</body>
+</html>
