@@ -1,4 +1,5 @@
 debug/
+debug_lz/
 results.csv
 .venv/
 __pycache__/
