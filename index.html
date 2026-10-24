@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>True Link Finder — Report</title>
+<style>
+  :root{--bg:#0e1117;--panel:#161b22;--line:#2d333b;--txt:#e6edf3;--muted:#8b949e}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:28px 20px 12px;text-align:center}
+  h1{margin:0;font-size:26px} .muted{color:var(--muted)}
+  main{max-width:980px;margin:0 auto;padding:16px 20px 64px}
+  .cards{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0 26px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px 20px;flex:1;min-width:120px;text-align:center}
+  .stat b{display:block;font-size:28px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:13.5px}
+  th{background:#1c2128;color:var(--muted);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  td.url,td.final{font:12.5px "SFMono-Regular",Consolas,monospace;word-break:break-all;max-width:340px}
+  .badge{padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;color:#0e1117}
+  button.copy{background:transparent;border:1px solid var(--line);color:var(--txt);
+    border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
+  button.copy:hover{border-color:var(--muted)}
+  .note{color:var(--muted);font-size:12.5px;margin-top:18px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔗 True Link Finder — Laporan</h1>
+    <p class="muted">Dibuat 24 Oct 2026 14:26 · dari results.csv</p>
+  </header>
+  <main>
+    <div class="cards"><div class="stat"><b style="color:#3fb950">2</b><span class="muted">Sehat</span></div><div class="stat"><b style="color:#d29922">0</b><span class="muted">Zonk</span></div><div class="stat"><b style="color:#f85149">0</b><span class="muted">Gagal/CAPTCHA</span></div><div class="stat"><b>2</b><span class="muted">Total</span></div></div>
+    <table>
+      <thead><tr><th>URL awal</th><th>Link akhir</th><th>Host</th><th>Status</th><th>Catatan</th></tr></thead>
+      <tbody><tr><td class="url">https://www.neosatsu.com/2026/08/kamen-rider-my-th-sub-indo.html</td><td class="final">https://gofile.io/d/CwxOktYI</td><td>gofile</td><td><span class="badge" style="background:#3fb950">✓ SEHAT</span></td><td></td></tr>
+<tr><td class="url">https://linkuzu.blogspot.com/?i=blgxY3pvblgxdkwyZHZabWxzWlM1cGJ5OWtMemRMVTBKb2JuSndsakk=</td><td class="final">https://gofile.io/d/7KSBhnrp</td><td>gofile</td><td><span class="badge" style="background:#3fb950">✓ SEHAT</span></td><td></td></tr></tbody>
+    </table>
+    <p class="note">Report statis ini bisa dibuka offline &amp; di-publish ke GitHub Pages. Hasil dihasilkan oleh CLI/API, bukan report.</p>
+  </main>
+  
+  <script>
+    document.querySelectorAll('button.copy').forEach(function(b){
+      b.addEventListener('click', function(){
+        var v = b.getAttribute('data-url') || b.parentElement.previousElementSibling.textContent;
+        if (navigator.clipboard) navigator.clipboard.writeText(v);
+      });
+    });
+  </script>
+
+</body>
+</html>
