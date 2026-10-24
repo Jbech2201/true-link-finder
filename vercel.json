@@ -13,7 +13,7 @@
     }
   ],
   "routes": [
-    { "src": "/api/resolve", "dest": "/api/index.py" },
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
     { "src": "/(app\\.js|style\\.css|favicon\\.ico)", "dest": "/public/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/public/index.html" }
